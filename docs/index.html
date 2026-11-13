@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Climate dashboard</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout: a quiet black landing page. Words on the left and a live CO2 rose on the right, then one card per dashboard, then the data and how it was retrieved. */
+  --bg: #000000;
+  --panel: #0a0d10;
+  --ink: #f3f5f6;
+  --ink-2: #aab4bc;
+  --ink-3: #6e7982;
+  --rule: #1c2227;
+  --accent: #7cc3b6;
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font-body); -webkit-font-smoothing: antialiased; }
+a { color: var(--ink); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 56px 24px 40px; display: grid; gap: 56px; }
+.hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 36px; align-items: center; }
+h1 { font: 650 clamp(42px, 6.2vw, 72px)/1 var(--font-display); font-variation-settings: "opsz" 144; margin: 0; letter-spacing: -0.015em; }
+.lead { font-size: 18.5px; line-height: 1.65; color: var(--ink-2); margin: 18px 0 0; max-width: 46ch; }
+.lead b { color: var(--ink); font-weight: 600; }
+.rose { margin: 0; display: grid; justify-items: center; gap: 10px; }
+.rose svg { width: min(100%, 360px); height: auto; overflow: visible; }
+.rose figcaption { font: 400 12px/1.5 var(--font-mono); color: var(--ink-3); text-align: center; max-width: 36ch; }
+.hand { transform-box: view-box; transform-origin: 0 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .hand { transition: transform .42s cubic-bezier(.3, 1.45, .55, 1); }
+  .pulse { animation: pulse 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+}
+@keyframes pulse { 0% { transform: scale(.6); opacity: .9; } 100% { transform: scale(2.6); opacity: 0; } }
+.hole-m { font: 500 11px var(--font-body); fill: var(--ink-3); letter-spacing: .04em; }
+.hole-v { font: 500 13px var(--font-mono); fill: var(--ink); }
+.mlab { font: 500 10.5px var(--font-body); fill: var(--ink-3); }
+
+h2 { font: 650 30px/1.15 var(--font-display); margin: 0; }
+.section-title { font: 600 13px var(--font-body); color: var(--ink-3); letter-spacing: .06em; text-transform: uppercase; margin: 0 0 14px; }
+.card { display: grid; grid-template-columns: 1.1fr 1fr; gap: 28px; align-items: center; background: var(--panel); border: 1px solid var(--rule); border-radius: 16px; padding: 22px; }
+.card img { width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--rule); display: block; }
+.card p { color: var(--ink-2); margin: 10px 0 0; max-width: 52ch; }
+.meta { font: 400 12.5px var(--font-mono); color: var(--ink-3); margin-top: 12px; }
+.open { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; padding: 10px 16px; border-radius: 999px; background: var(--accent); color: #000; font-weight: 600; text-decoration: none; }
+.open:hover { filter: brightness(1.08); }
+.next { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; }
+.next div { border: 1px dashed var(--rule); border-radius: 12px; padding: 14px 16px; color: var(--ink-2); font-size: 14.5px; }
+.next b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 2px; }
+.files { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.files li { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.files code { font: 400 13.5px var(--font-mono); }
+.files span { color: var(--ink-2); font-size: 14.5px; }
+footer { color: var(--ink-3); font-size: 13px; border-top: 1px solid var(--rule); padding-top: 16px; display: grid; gap: 6px; }
+footer p { margin: 0; max-width: 100ch; }
+footer a { color: var(--ink-2); }
+@media (max-width: 780px) {
+  .hero, .card { grid-template-columns: 1fr; }
+  .files li { grid-template-columns: 1fr; gap: 2px; }
+  .wrap { padding: 36px 18px 32px; gap: 44px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="hero">
+    <div>
+      <h1>Climate dashboard</h1>
+      <p class="lead">Living portraits of a changing climate, drawn from open data and guided by the <b>GCOS Essential Climate Variables</b>. Each dashboard is built to be explored: hover, click, change the scale, and watch the seasons turn.</p>
+    </div>
+    <figure class="rose">
+      <svg id="rose" viewBox="-190 -190 380 380" role="img" aria-label="Global carbon dioxide, 2020 to 2026, as a rose: one ring per year, ticking month by month"></svg>
+      <figcaption id="cap">Global CO₂, one ring per year, ticking month by month. NOAA GML global monthly means.</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <p class="section-title">Dashboards</p>
+    <article class="card">
+      <a href="dashboard/greenhouse-gas-roses.html" aria-label="Open Greenhouse gas roses"><img src="preview.png" alt="Greenhouse gas roses: rows of rose plots for carbon dioxide, methane and nitrous oxide on a black background"></a>
+      <div>
+        <h2>Greenhouse gas roses</h2>
+        <p>Carbon dioxide, methane and nitrous oxide as rose small multiples you can rescale, hover and open, with NOAA's uncertainty, smooth growth curves, the warming effect of each gas, and a short written guide to where the air was caught and where it is heading.</p>
+        <div class="meta">NOAA Global Monitoring Laboratory · data through <span id="thru">July 2026</span></div>
+        <a class="open" href="dashboard/greenhouse-gas-roses.html">Open the dashboard →</a>
+      </div>
+    </article>
+    <div class="next" aria-label="Coming next">
+      <div><b>CO₂ in an El Niño ring</b>The rose wrapped in a ring of ENSO seasons, 1979 to now.</div>
+      <div><b>Temperature wheel</b>Each month's warmth bulging out from the baseline, NASA GISTEMP.</div>
+      <div><b>Ocean chlorophyll</b>Global and Santa Barbara Channel chlorophyll-a from satellites.</div>
+    </div>
+  </section>
+
+  <section>
+    <p class="section-title">Data and how it was retrieved</p>
+    <ul class="files">
+      <li><a href="https://github.com/sarah-cleo/climate-dashboard/blob/main/retrieval/download_climate_data.py"><code>retrieval/download_climate_data.py</code></a><span>Downloads every file, organised by Essential Climate Variable, including chlorophyll subsets from ERDDAP.</span></li>
+      <li><a href="https://github.com/sarah-cleo/climate-dashboard/blob/main/retrieval/get_climate_data.py"><code>retrieval/get_climate_data.py</code></a><span>The simple first script: global CO₂, methane, N₂O and NASA temperature.</span></li>
+      <li><a href="https://github.com/sarah-cleo/climate-dashboard/blob/main/retrieval/climate_dashboard_data.ipynb"><code>retrieval/climate_dashboard_data.ipynb</code></a><span>The notebook that retrieved the data, with preview plots. Runs in Colab.</span></li>
+      <li><a href="https://github.com/sarah-cleo/climate-dashboard/blob/main/retrieval/climate_data_download.ipynb"><code>retrieval/climate_data_download.ipynb</code></a><span>The first notebook, for the four core files.</span></li>
+      <li><a href="https://github.com/sarah-cleo/climate-dashboard/tree/main/data"><code>data/</code></a><span>The files exactly as NOAA and NASA published them.</span></li>
+    </ul>
+  </section>
+
+  <footer>
+    <p>Data: NOAA Global Monitoring Laboratory (<a href="https://doi.org/10.15138/9N0H-ZH07">CO₂</a>; <a href="https://doi.org/10.15138/P8XG-AA10">CH₄ and N₂O</a>; <a href="https://gml.noaa.gov/aggi/aggi.html">AGGI</a>) and NASA GISS <a href="https://data.giss.nasa.gov/gistemp/">GISTEMP v4</a>. Guided by the <a href="https://gcos.wmo.int/site/global-climate-observing-system-gcos/essential-climate-variables">GCOS Essential Climate Variables</a>.</p>
+    <p>Colour: Crameri Scientific Colour Maps (batlow).</p>
+  </footer>
+</div>
+
+<script>
+const CO2 = {"2020": [412.44, 412.97, 413.44, 413.86, 413.81, 412.88, 411.17, 409.74, 410.0, 411.66, 413.25, 414.14], "2021": [414.73, 415.2, 415.49, 415.81, 416.01, 415.2, 413.45, 412.15, 412.38, 413.83, 415.58, 416.6], "2022": [417.18, 417.64, 418.16, 418.58, 418.45, 417.43, 415.67, 414.4, 414.62, 416.13, 417.84, 418.91], "2023": [419.37, 419.65, 419.98, 420.48, 420.54, 419.56, 417.92, 416.78, 417.17, 418.84, 420.4, 421.5], "2024": [422.2, 422.79, 423.38, 423.85, 423.93, 423.23, 421.61, 420.27, 420.58, 422.33, 424.07, 425.2], "2025": [426.01, 426.46, 426.66, 427.03, 427.04, 425.9, 424.09, 422.86, 423.06, 424.66, 426.38, 427.31], "2026": [428.02, 428.45, 428.5, 428.68, 428.62, 427.79, 426.1]};     // { "2020": [12 monthly means], ..., "2026": [months so far] }
+const BATLOW = ["#011959", "#06215b", "#0a285c", "#0d315d", "#0e375e", "#103e5f", "#114360", "#134961", "#144e62", "#175362", "#1a5762", "#1e5c62", "#236060", "#28645f", "#30685c", "#376b58", "#3f6e54", "#477150", "#50744b", "#587646", "#607942", "#6a7b3d", "#737e38", "#7d8134", "#868330", "#91862d", "#9b892b", "#a78b2c", "#b18d2f", "#bb8f33", "#c6913a", "#cf9340", "#d9954a", "#e19752", "#ea995e", "#f09c69", "#f6a077", "#f9a382", "#fca78e", "#fdac9c", "#fdafa7", "#fdb4b4", "#fdb7be", "#fdbccb", "#fcbfd6", "#fcc4e3", "#fbc8ef", "#faccfa"];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const NS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("rose");
+const el = (tag, attrs, parent = svg) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+
+const hexToRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function batlow(t) {
+  const x = Math.max(0, Math.min(1, t)) * (BATLOW.length - 1), i = Math.floor(x), f = x - i;
+  const a = hexToRgb(BATLOW[i]), b = hexToRgb(BATLOW[Math.min(i + 1, BATLOW.length - 1)]);
+  return `rgb(${a.map((v, k) => Math.round(v + (b[k] - v) * f)).join(",")})`;
+}
+
+const years = Object.keys(CO2).map(Number).sort((a, b) => a - b);
+const all = years.flatMap(y => CO2[y]);
+const lo = Math.min(...all), hi = Math.max(...all);
+const R = 150, HOLE = 40;
+const rad = v => HOLE + (v - lo) / (hi - lo) * (R - HOLE);
+const ang = m => ((m + 0.5) / 12) * 2 * Math.PI;            // m = 0 for January
+const pt = (m, v) => [Math.sin(ang(m)) * rad(v), -Math.cos(ang(m)) * rad(v)];
+
+// smooth path through points (Catmull-Rom as cubic Béziers)
+function smooth(P, closed) {
+  const n = P.length, get = i => closed ? P[(i + n) % n] : P[Math.max(0, Math.min(n - 1, i))];
+  let d = `M${P[0][0].toFixed(2)},${P[0][1].toFixed(2)}`;
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const p0 = get(i - 1), p1 = get(i), p2 = get(i + 1), p3 = get(i + 2);
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+    const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${c1.map(v => v.toFixed(2))} ${c2.map(v => v.toFixed(2))} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
+  }
+  return d + (closed ? "Z" : "");
+}
+
+// soft glow behind the rings
+const defs = el("defs", {});
+const f = el("filter", { id: "glow", x: "-30%", y: "-30%", width: "160%", height: "160%" }, defs);
+el("feGaussianBlur", { in: "SourceGraphic", stdDeviation: "6", result: "b" }, f);
+el("feColorMatrix", { in: "b", type: "matrix", values: "1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 .8 0", result: "g" }, f);
+const mg = el("feMerge", {}, f); el("feMergeNode", { in: "g" }, mg); el("feMergeNode", { in: "SourceGraphic" }, mg);
+
+const rings = el("g", { filter: "url(#glow)" });
+const complete = years.filter(y => CO2[y].length === 12);
+const color = y => batlow(0.15 + 0.8 * (y - years[0]) / (years[years.length - 1] - years[0]));
+for (const y of [...complete].reverse()) {
+  el("path", { d: smooth(CO2[y].map((v, m) => pt(m, v)), true), fill: color(y), stroke: "#000", "stroke-width": 1.3 }, rings);
+}
+const partial = years.find(y => CO2[y].length < 12);
+let nowPt = null;
+if (partial) {
+  const P = CO2[partial].map((v, m) => pt(m, v));
+  el("path", { d: smooth(P, false), fill: "none", stroke: color(partial), "stroke-width": 2.2, "stroke-linecap": "round" }, rings);
+  nowPt = P[P.length - 1];
+}
+el("circle", { r: HOLE - 3, fill: "#000" });
+for (let m = 0; m < 12; m += 3) {
+  const a = ang(m), r = R + 20;
+  el("text", { x: (Math.sin(a) * r).toFixed(1), y: (-Math.cos(a) * r + 4).toFixed(1), "text-anchor": "middle", class: "mlab" }).textContent = MON[m];
+}
+if (nowPt) {
+  el("circle", { cx: nowPt[0], cy: nowPt[1], r: 5, fill: "none", stroke: "#fff", "stroke-width": 1.2, class: "pulse" });
+  el("circle", { cx: nowPt[0], cy: nowPt[1], r: 3, fill: "#fff" });
+}
+// the ticking hand, with a dot riding the newest complete year
+const hand = el("g", { class: "hand" });
+el("line", { x1: 0, y1: -HOLE, x2: 0, y2: -R - 8, stroke: "#fff", "stroke-width": 1.1, opacity: .6 }, hand);
+const rider = el("circle", { cx: 0, r: 4.5, fill: "#000", stroke: "#fff", "stroke-width": 2 }, hand);
+const hm = el("text", { y: -3, "text-anchor": "middle", class: "hole-m" });
+const hv = el("text", { y: 13, "text-anchor": "middle", class: "hole-v" });
+
+const ref = complete[complete.length - 1];
+let step = (partial ? CO2[partial].length - 1 : 11);
+function show() {
+  const m = ((step % 12) + 12) % 12, v = CO2[ref][m];
+  hand.style.transform = `rotate(${((step + 0.5) / 12) * 360}deg)`;
+  rider.setAttribute("cy", (-rad(v)).toFixed(2));
+  hm.textContent = `${MON[m].toUpperCase()} ${ref}`;
+  hv.textContent = `${v.toFixed(1)} ppm`;
+}
+show();
+if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => { step++; show(); }, 900);
+
+document.getElementById("cap").textContent =
+  `Global CO₂, ${years[0]}–${years[years.length - 1]}: one ring per year, ticking month by month along ${ref}. ` +
+  (partial ? `The open arc is ${partial} so far. ` : "") + "NOAA GML global monthly means.";
+if (partial) document.getElementById("thru").textContent = `${["January","February","March","April","May","June","July","August","September","October","November","December"][CO2[partial].length - 1]} ${partial}`;
+</script>
+</body>
+</html>
